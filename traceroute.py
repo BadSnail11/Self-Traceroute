@@ -33,7 +33,7 @@ def create_icmp_packet(id, seq):
     """
     Создание ICMP-пакета.
     """
-    icmp_type = 8  # Echo Request
+    icmp_type = 8
     icmp_code = 0
     icmp_checksum = 0
     icmp_id = id
@@ -59,49 +59,50 @@ def traceroute(dest_addr, max_hops=30, timeout=1, resolve_names=True):
     print(f"traceroute to {dest_addr} ({dest_addr}), {max_hops} hops max")
 
     for ttl in range(1, max_hops + 1):
-        send_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
-        send_socket.setsockopt(socket.IPPROTO_IP, socket.IP_TTL, ttl)
-
-        recv_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
-        recv_socket.bind(("", port))
-        recv_socket.settimeout(timeout)
-
-        packet_id = os.getpid() & 0xFFFF
-        packet = create_icmp_packet(packet_id, ttl)
-        send_socket.sendto(packet, (dest_addr, port))
-
-        start_time = time.time()
-        curr_addr = None
-        curr_name = None
         finished = False
+        for _ in range(3):
+            send_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
+            send_socket.setsockopt(socket.IPPROTO_IP, socket.IP_TTL, ttl)
 
-        try:
-            data, curr_addr = recv_socket.recvfrom(1024)
-            curr_addr = curr_addr[0]
+            recv_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
+            recv_socket.bind(("", port))
+            recv_socket.settimeout(timeout)
 
-            icmp_header = data[20:28]
-            icmp_type, code, checksum, received_id, seq = struct.unpack("!BBHHH", icmp_header)
+            packet_id = os.getpid() & 0xFFFF
+            packet = create_icmp_packet(packet_id, ttl)
+            send_socket.sendto(packet, (dest_addr, port))
 
-            if icmp_type == 0:
-                finished = True
-
-            if resolve_names:
-                try:
-                    curr_name = socket.gethostbyaddr(curr_addr)[0]
-                except socket.error:
-                    curr_name = curr_addr
-            else:
-                curr_name = curr_addr
-        except:
+            start_time = time.time()
             curr_addr = None
-        finally:
-            send_socket.close()
-            recv_socket.close()
+            curr_name = None
 
-        if curr_addr is not None:
-            print(f"{ttl}\t{curr_name}\t{(time.time() - start_time) * 1000:.2f} ms")
-        else:
-            print(f"{ttl}\t*\t*\t*")
+            try:
+                data, curr_addr = recv_socket.recvfrom(1024)
+                curr_addr = curr_addr[0]
+
+                icmp_header = data[20:28]
+                icmp_type, code, checksum, received_id, seq = struct.unpack("!BBHHH", icmp_header)
+
+                if icmp_type == 0:
+                    finished = True
+
+                if resolve_names:
+                    try:
+                        curr_name = str(socket.gethostbyaddr(curr_addr)[0]) + f" ({curr_addr})" 
+                    except socket.error:
+                        curr_name = curr_addr
+                else:
+                    curr_name = curr_addr
+            except:
+                curr_addr = None
+            finally:
+                send_socket.close()
+                recv_socket.close()
+
+            if curr_addr is not None:
+                print(f"{ttl}\t{curr_name}\t{(time.time() - start_time) * 1000:.2f} ms")
+            else:
+                print(f"{ttl}\t*\t*\t*")
 
         if finished:
             break
