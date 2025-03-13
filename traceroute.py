@@ -38,7 +38,7 @@ def create_icmp_packet(id, seq):
     icmp_checksum = 0
     icmp_id = id
     icmp_seq = seq
-    icmp_data = b"abcdefghijklmnopqrstuvwxyz"
+    icmp_data = b"ilovecomputernetworks"
 
     header = struct.pack("!BBHHH", icmp_type, icmp_code, icmp_checksum, icmp_id, icmp_seq)
     packet = header + icmp_data
@@ -53,14 +53,16 @@ def traceroute(dest_addr, max_hops=30, timeout=1, resolve_names=True):
     """
     Основная функция traceroute.
     """
+
+    dest_name = dest_addr
     dest_addr = socket.gethostbyname(dest_addr)
     port = 33434
 
-    print(f"traceroute to {dest_addr} ({dest_addr}), {max_hops} hops max")
+    print(f"traceroute to {dest_name} ({dest_addr}), {max_hops} hops max")
 
     for ttl in range(1, max_hops + 1):
         finished = False
-        for _ in range(3):
+        for i in range(3):
             send_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
             send_socket.setsockopt(socket.IPPROTO_IP, socket.IP_TTL, ttl)
 
@@ -100,9 +102,16 @@ def traceroute(dest_addr, max_hops=30, timeout=1, resolve_names=True):
                 recv_socket.close()
 
             if curr_addr is not None:
-                print(f"{ttl}\t{curr_name}\t{(time.time() - start_time) * 1000:.2f} ms")
+                if i == 0:
+                    print(f"{ttl}\t{curr_name}\t{(time.time() - start_time) * 1000:.2f} ms", end="")
+                else:
+                    print(f"\t{(time.time() - start_time) * 1000:.2f} ms", end="")
             else:
-                print(f"{ttl}\t*\t*\t*")
+                if i == 0:
+                    print(f"{ttl}\t*", end="")
+                else:
+                    print(f"\t", end="")
+        print()
 
         if finished:
             break
